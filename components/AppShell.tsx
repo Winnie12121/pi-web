@@ -334,11 +334,7 @@ export function AppShell() {
           },
           {
             label: "Automation",
-            onClick: () => {
-              setActiveMainView("automation");
-              setActiveTopPanel(null);
-              router.replace("/", { scroll: false });
-            },
+            onClick: handleBackToAutomationList,
             active: showAutomation || showAutomationSkill,
             title: "Automation",
             icon: (
@@ -710,7 +706,7 @@ export function AppShell() {
           {showAutomation ? (
             <AutomationView onOpenSkill={handleOpenAutomationSkill} />
           ) : showAutomationSkill ? (
-            <AutomationSkillMode onBackToList={handleBackToAutomationList} />
+            <AutomationSkillMode />
           ) : showChat ? (
             <ChatWindow
               key={sessionKey}
@@ -749,66 +745,60 @@ export function AppShell() {
         </div>
       </div>
 
-      {!showAutomationSkill && (
-        <>
-          {/* Right panel: file viewer — always mounted, width animated via CSS */}
-          <div
-            className={`right-panel-container${rightPanelOpen ? " right-panel-open" : " right-panel-closed"}`}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              borderLeft: "1px solid var(--border)",
-              background: "var(--bg)",
-            }}
-          >
-            {/* Right panel tab bar */}
-            <div style={{ display: "flex", alignItems: "center", flexShrink: 0, background: "var(--bg-panel)", borderBottom: "1px solid var(--border)", height: 36 }}>
-              <div style={{ flex: 1, overflow: "hidden" }}>
-                <TabBar
-                  tabs={fileTabs}
-                  activeTabId={activeFileTabId ?? ""}
-                  onSelectTab={setActiveFileTabId}
-                  onCloseTab={handleCloseFileTab}
-                />
-              </div>
-
-            </div>
-
-            {/* File content */}
-            <div style={{ flex: 1, overflow: "hidden" }}>
-              {activeFileTab?.filePath ? (
-                <FileViewer filePath={activeFileTab.filePath} cwd={activeCwd ?? undefined} />
-              ) : (
-                <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
-                  No file open
-                </div>
-              )}
-            </div>
+      {/* Right panel: file viewer — always mounted, width animated via CSS */}
+      <div
+        className={`right-panel-container${rightPanelOpen ? " right-panel-open" : " right-panel-closed"}`}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          borderLeft: "1px solid var(--border)",
+          background: "var(--bg)",
+        }}
+      >
+        {/* Right panel tab bar */}
+        <div style={{ display: "flex", alignItems: "center", flexShrink: 0, background: "var(--bg-panel)", borderBottom: "1px solid var(--border)", height: 36 }}>
+          <div style={{ flex: 1, overflow: "hidden" }}>
+            <TabBar
+              tabs={fileTabs}
+              activeTabId={activeFileTabId ?? ""}
+              onSelectTab={setActiveFileTabId}
+              onCloseTab={handleCloseFileTab}
+            />
           </div>
-        </>
-      )}
+
+        </div>
+
+        {/* File content */}
+        <div style={{ flex: 1, overflow: "hidden" }}>
+          {activeFileTab?.filePath ? (
+            <FileViewer filePath={activeFileTab.filePath} cwd={activeCwd ?? undefined} />
+          ) : (
+            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
+              No file open
+            </div>
+          )}
+        </div>
+      </div>
     </div>
     {/* File panel toggle — always visible at top-right */}
-    {!showAutomationSkill && (
-      <button
-        onClick={() => setRightPanelOpen((v) => !v)}
-        title={rightPanelOpen ? "Hide file panel" : "Show file panel"}
-        style={{
-          position: "fixed", top: 0, right: 0, zIndex: 300,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          width: 36, height: 36, padding: 0,
-          background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
-          color: rightPanelOpen ? "var(--text)" : "var(--text-muted)",
-          cursor: "pointer", transition: "color 0.12s",
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = rightPanelOpen ? "var(--text)" : "var(--text-muted)"; }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
-        </svg>
-      </button>
-    )}
+    <button
+      onClick={() => setRightPanelOpen((v) => !v)}
+      title={rightPanelOpen ? "Hide file panel" : "Show file panel"}
+      style={{
+        position: "fixed", top: 0, right: 0, zIndex: 300,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 36, height: 36, padding: 0,
+        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
+        color: rightPanelOpen ? "var(--text)" : "var(--text-muted)",
+        cursor: "pointer", transition: "color 0.12s",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = rightPanelOpen ? "var(--text)" : "var(--text-muted)"; }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
+      </svg>
+    </button>
     {modelsConfigOpen && <ModelsConfig onClose={() => { setModelsConfigOpen(false); setModelsRefreshKey((k) => k + 1); }} />}
     {skillsConfigOpen && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
       <SkillsConfig cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} />

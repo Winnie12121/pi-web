@@ -240,12 +240,29 @@ const MOCK_SKILL_FILES: MockFileNode[] = [
   },
 ];
 
-function MockSkillTreeNode({ node, depth }: { node: MockFileNode; depth: number }) {
+function MockSkillTreeNode({
+  node,
+  depth,
+  parentPath,
+  onOpenFile,
+}: {
+  node: MockFileNode;
+  depth: number;
+  parentPath: string;
+  onOpenFile?: (filePath: string, fileName: string) => void;
+}) {
   const [open, setOpen] = useState(true);
+  const fullPath = `${parentPath}/${node.name}`;
   return (
     <div>
       <div
-        onClick={() => node.isDir && setOpen((v) => !v)}
+        onClick={() => {
+          if (node.isDir) {
+            setOpen((v) => !v);
+          } else {
+            onOpenFile?.(fullPath, node.name);
+          }
+        }}
         style={{
           display: "flex",
           alignItems: "center",
@@ -254,7 +271,7 @@ function MockSkillTreeNode({ node, depth }: { node: MockFileNode; depth: number 
           paddingLeft: 8 + depth * 14,
           paddingRight: 8,
           borderRadius: 4,
-          cursor: node.isDir ? "pointer" : "default",
+          cursor: "pointer",
           color: "var(--text)",
           userSelect: "none",
         }}
@@ -284,13 +301,24 @@ function MockSkillTreeNode({ node, depth }: { node: MockFileNode; depth: number 
         </span>
       </div>
       {node.isDir && open && node.children?.map((child) => (
-        <MockSkillTreeNode key={`${node.name}/${child.name}`} node={child} depth={depth + 1} />
+        <MockSkillTreeNode key={`${fullPath}/${child.name}`} node={child} depth={depth + 1} parentPath={fullPath} onOpenFile={onOpenFile} />
       ))}
     </div>
   );
 }
 
-function MockSkillExplorer({ cwdLabel }: { cwdLabel: string }) {
+function MockSkillExplorer({
+  cwdLabel,
+  homeDir,
+  onOpenFile,
+}: {
+  cwdLabel: string;
+  homeDir: string;
+  onOpenFile?: (filePath: string, fileName: string) => void;
+}) {
+  const workspacePath = cwdLabel.startsWith("~/") && homeDir ? homeDir + cwdLabel.slice(1) : cwdLabel;
+  const parentPath = workspacePath.replace(/\/offer-workflow-skill$/, "");
+
   return (
     <div style={{ padding: "2px 4px" }}>
       <div style={{ margin: "4px 6px 10px", padding: "9px 10px", borderRadius: 9, background: "var(--bg-hover)", color: "var(--text-muted)" }}>
@@ -308,7 +336,7 @@ function MockSkillExplorer({ cwdLabel }: { cwdLabel: string }) {
         </div>
       </div>
       {MOCK_SKILL_FILES.map((node) => (
-        <MockSkillTreeNode key={node.name} node={node} depth={0} />
+        <MockSkillTreeNode key={node.name} node={node} depth={0} parentPath={parentPath} onOpenFile={onOpenFile} />
       ))}
     </div>
   );
@@ -869,7 +897,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           {automationMode ? "Skill Conversations" : "Chats"}
         </div>
         {automationMode ? (
-          automationMode.conversations.map((conversation, index) => (
+          automationMode.conversations.map((conversation) => (
             <div
               key={conversation.id}
               style={{
@@ -881,7 +909,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 padding: "7px 12px",
                 boxSizing: "border-box",
                 borderRadius: 9,
-                background: index === 0 ? "color-mix(in srgb, var(--accent) 9%, transparent)" : "transparent",
+                background: "transparent",
                 border: "1px solid transparent",
                 color: "var(--text)",
                 cursor: "pointer",
@@ -1004,7 +1032,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           {explorerOpen && (
             <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
               {automationMode ? (
-                <MockSkillExplorer cwdLabel={automationMode.cwdLabel} />
+                <MockSkillExplorer cwdLabel={automationMode.cwdLabel} homeDir={homeDir} onOpenFile={onOpenFile} />
               ) : (
                 <FileExplorer
                   cwd={selectedCwdProp ?? selectedCwd!}

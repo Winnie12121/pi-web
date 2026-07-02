@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
+import { homedir } from "os";
 import path from "path";
-import { listAllSessions } from "@/lib/session-reader";
+import { getAgentDir, listAllSessions } from "@/lib/session-reader";
 
 const IGNORED_NAMES = new Set([
   "node_modules", ".git", ".next", "dist", "build", "__pycache__",
@@ -87,6 +88,94 @@ function getLanguage(filePath: string): string {
   return EXT_TO_LANGUAGE[ext] ?? "text";
 }
 
+interface VirtualFileData {
+  content: string;
+  language: string;
+}
+
+const VIRTUAL_AUTOMATION_SKILL_FILES: Record<string, VirtualFileData> = {
+  "skill.md": {
+    language: "markdown",
+    content: `# Offer Workflow Skill
+
+## Goal
+Automate the end-to-end process of creating and sending an offer email to a candidate from an approved requisition.
+
+## Steps
+1. Open Outlook.
+2. Find unread emails related to candidate offers.
+3. Open each candidate link.
+4. Extract candidate details.
+5. Validate offer amount and requisition ID.
+6. Attach offer letter PDF.
+7. Review email draft.
+8. Send email.
+9. Update Excel tracker.
+`,
+  },
+  "scripts/README.md": {
+    language: "markdown",
+    content: `# Scripts
+
+Helper scripts for this automation skill will live here.
+`,
+  },
+  "references/recorded-steps.md": {
+    language: "markdown",
+    content: `# Recorded Steps
+
+- Open Outlook
+- Search unread offer emails
+- Open candidate profile
+- Draft offer email
+- Update tracker
+`,
+  },
+  "references/locator-notes.md": {
+    language: "markdown",
+    content: `# Locator Notes
+
+- Prefer semantic labels for buttons.
+- Confirm candidate profile links before extracting details.
+- Pause if the offer amount cannot be validated.
+`,
+  },
+  "references/example-input.md": {
+    language: "markdown",
+    content: `# Example Input
+
+- candidate_name: Jane Candidate
+- requisition_id: REQ-2048
+- offer_template: standard-offer
+`,
+  },
+  "outputs/latest-result.json": {
+    language: "json",
+    content: `{
+  "status": "ready",
+  "processed": 0,
+  "outputs": []
+}
+`,
+  },
+};
+
+function getVirtualAutomationSkillFile(filePath: string): VirtualFileData | null {
+  const roots = [
+    path.join(homedir(), ".pi", "skills", "offer-workflow-skill"),
+    path.join(getAgentDir(), "skills", "offer-workflow-skill"),
+  ];
+  const target = path.resolve(filePath);
+
+  for (const root of roots) {
+    const rel = path.relative(path.resolve(root), target).replace(/\\/g, "/");
+    if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) continue;
+    return VIRTUAL_AUTOMATION_SKILL_FILES[rel] ?? null;
+  }
+
+  return null;
+}
+
 // Short-TTL cache for the allowed-roots set. Without this, every file list/read
 // request re-scans every pi session on disk just to check access. 5s is short
 // enough that newly-created cwds appear promptly; stored on globalThis so it
@@ -124,8 +213,10 @@ async function getAllowedRoots(): Promise<Set<string>> {
     if (s.cwd) roots.add(s.cwd);
   }
   // Also allow ~/pi-cwd-* directories created by the default-cwd endpoint
-  const home = (await import("os")).homedir();
+  const home = homedir();
   const { readdirSync } = await import("fs");
+  roots.add(path.join(getAgentDir(), "skills"));
+  roots.add(path.join(home, ".pi", "skills"));
   try {
     for (const name of readdirSync(home)) {
       if (/^pi-cwd-\d{8}$/.test(name)) {
@@ -351,6 +442,40 @@ export async function GET(
     try {
       stat = fs.statSync(filePath);
     } catch {
+      const virtualFile = getVirtualAutomationSkillFile(filePath);
+      if (virtualFile) {
+        if (type === "read") {
+          return NextResponse.json({
+            content: virtualFile.content,
+            language: virtualFile.language,
+            size: Buffer.byteLength(virtualFile.content, "utf8"),
+          });
+        }
+        if (type === "meta") {
+          return NextResponse.json({
+            size: Buffer.byteLength(virtualFile.content, "utf8"),
+            language: virtualFile.language,
+            mime: "text/plain",
+            previewKind: null,
+          });
+        }
+        if (type === "watch") {
+          const stream = new ReadableStream({
+            start(controller) {
+              const payload = `event: connected\ndata: ${JSON.stringify({ filePath, virtual: true })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(payload));
+            },
+          });
+          return new Response(stream, {
+            headers: {
+              "Content-Type": "text/event-stream",
+              "Cache-Control": "no-cache, no-transform",
+              Connection: "keep-alive",
+              "X-Accel-Buffering": "no",
+            },
+          });
+        }
+      }
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
