@@ -774,6 +774,7 @@ export function AppShell() {
                 key={`automation:${automationSessionKey}:${automationSkillSession?.id ?? "new"}:${automationSkillCwd}`}
                 session={automationSkillSession}
                 newSessionCwd={automationSkillSession ? null : automationSkillCwd}
+                isAutomationSkillWorkspace
                 onAgentEnd={handleAgentEnd}
                 onSessionCreated={handleSessionCreated}
                 onSessionForked={handleSessionForked}

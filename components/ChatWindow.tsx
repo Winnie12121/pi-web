@@ -12,6 +12,7 @@ import { useDragDrop } from "@/hooks/useDragDrop";
 interface Props {
   session: SessionInfo | null;
   newSessionCwd: string | null;
+  isAutomationSkillWorkspace?: boolean;
   onAgentEnd?: () => void;
   onSessionCreated?: (session: SessionInfo) => void;
   onSessionForked?: (newSessionId: string) => void;
@@ -21,6 +22,13 @@ interface Props {
   onSystemPromptChange?: (prompt: string | null) => void;
   onSessionStatsChange?: (stats: { tokens: { input: number; output: number; cacheRead: number; cacheWrite: number }; cost?: number } | null) => void;
   onContextUsageChange?: (usage: { percent: number | null; contextWindow: number; tokens: number | null } | null) => void;
+}
+
+const EXECUTE_SKILL_PROMPT = "Execute the automation skill defined in SKILL.md in the current working directory. Use the current workspace files as context. If required inputs are missing, ask for them before taking irreversible actions.";
+
+function isAutomationSkillCwd(cwd: string | null | undefined): boolean {
+  if (!cwd) return false;
+  return cwd.includes("/.pi/agent/skills/") || cwd.includes("/.pi/skills/");
 }
 
 function phaseLabel(phase: AgentPhase): string {
@@ -90,7 +98,37 @@ function Typewriter({ phrases }: { phrases: string[] }) {
   );
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange }: Props) {
+function ExecuteSkillButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={disabled ? "Agent is running" : "Execute SKILL.md in this workspace"}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        height: 24,
+        padding: "0 9px",
+        border: "1px solid var(--border)",
+        borderRadius: 6,
+        background: disabled ? "var(--bg-hover)" : "var(--accent)",
+        color: disabled ? "var(--text-dim)" : "#fff",
+        cursor: disabled ? "not-allowed" : "pointer",
+        fontSize: 11,
+        fontWeight: 600,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M8 5v14l11-7z" />
+      </svg>
+      {disabled ? "Executing..." : "Execute"}
+    </button>
+  );
+}
+
+export function ChatWindow({ session, newSessionCwd, isAutomationSkillWorkspace, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange }: Props) {
   const {
     loading, error, messages, entryIds, streamState,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
@@ -156,6 +194,11 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   const visibleMessages = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const messageRefs = useMessageRefs(visibleMessages.length);
+  const showSkillExecuteAction = Boolean(isAutomationSkillWorkspace || isAutomationSkillCwd(session?.cwd ?? newSessionCwd));
+  const handleExecuteSkill = useCallback(() => {
+    if (agentRunning) return;
+    void handleSend(EXECUTE_SKILL_PROMPT);
+  }, [agentRunning, handleSend]);
 
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !agentRunning;
 
@@ -299,8 +342,12 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 }
               }
               let lastUserIdx = -1;
+              let lastAssistantIdx = -1;
               for (let i = messages.length - 1; i >= 0; i--) {
                 if (messages[i].role === "user") { lastUserIdx = i; break; }
+              }
+              for (let i = messages.length - 1; i >= 0; i--) {
+                if (messages[i].role === "assistant") { lastAssistantIdx = i; break; }
               }
               let refIdx = 0;
               return messages.map((msg, idx) => {
@@ -329,6 +376,11 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                     message={msg}
                     toolResults={toolResultsMap}
                     modelNames={modelNames}
+                    assistantAction={
+                      showSkillExecuteAction && msg.role === "assistant" && idx === lastAssistantIdx
+                        ? <ExecuteSkillButton disabled={agentRunning} onClick={handleExecuteSkill} />
+                        : undefined
+                    }
                     entryId={entryIds[idx]}
                     onFork={agentRunning || isNew || (idx === 0 && msg.role === "user") ? undefined : handleFork}
                     forking={forkingEntryId === entryIds[idx]}
