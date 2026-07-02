@@ -246,20 +246,30 @@ export function AppShell() {
         onOpenFile={handleOpenFile}
         explorerRefreshKey={explorerRefreshKey}
         onAtMention={handleAtMention}
-      />
-      <div style={{ padding: "8px", flexShrink: 0, display: "flex", justifyContent: "space-between", gap: 4 }}>
-        {([
+        topActions={[
+          {
+            label: "Search",
+            onClick: () => {},
+            placeholder: true,
+            title: "Search coming soon",
+            icon: (
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+            ),
+          },
           {
             label: "Models",
             onClick: () => setModelsConfigOpen(true),
             disabled: false,
+            title: "Models",
             icon: (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" />
-                <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
-                <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
-                <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
-                <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2.5 5 6.25v7.5l7 3.75 7-3.75v-7.5L12 2.5Z" />
+                <path d="m5 6.25 7 3.75 7-3.75" />
+                <path d="M12 10v7.5" />
+                <path d="M5 13.75 12 10l7 3.75" />
               </svg>
             ),
           },
@@ -267,35 +277,37 @@ export function AppShell() {
             label: "Skills",
             onClick: () => setSkillsConfigOpen(true),
             disabled: !activeCwd && !selectedSession?.cwd && !newSessionCwd,
+            title: (!activeCwd && !selectedSession?.cwd && !newSessionCwd) ? "Select a project first" : "Skills",
             icon: (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3v3" />
+                <path d="M19.5 4.5 17 7" />
+                <path d="M21 12h-3" />
+                <path d="M19.5 19.5 17 17" />
+                <path d="M12 21v-3" />
+                <path d="M4.5 19.5 7 17" />
+                <path d="M3 12h3" />
+                <path d="M4.5 4.5 7 7" />
+                <path d="m9 12 2 2 4-5" />
               </svg>
             ),
           },
-        ] as { label: string; onClick: () => void; disabled: boolean; icon: React.ReactNode }[]).map(({ label, onClick, disabled, icon }) => (
-          <button
-            key={label}
-            onClick={onClick}
-            disabled={disabled}
-            title={label}
-            style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              height: 32, padding: 0, background: "none", border: "none",
-              borderRadius: 9, color: "var(--text-muted)", cursor: disabled ? "default" : "pointer",
-              fontSize: 12, opacity: disabled ? 0.35 : 1,
-              transition: "background 0.12s, color 0.12s",
-            }}
-            onMouseEnter={(e) => { if (!disabled) { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.color = "var(--text)"; } }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--text-muted)"; }}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
-      </div>
+          {
+            label: "Automation",
+            onClick: () => {},
+            placeholder: true,
+            title: "Automation coming soon",
+            icon: (
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="4" width="7" height="7" rx="2" />
+                <rect x="13" y="13" width="7" height="7" rx="2" />
+                <path d="M11 7.5h2.5a3 3 0 0 1 3 3V13" />
+                <path d="M13 16.5h-2.5a3 3 0 0 1-3-3V11" />
+              </svg>
+            ),
+          },
+        ]}
+      />
     </>
   );
 

@@ -1,8 +1,19 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import type { ReactNode } from "react";
 import type { SessionInfo } from "@/lib/types";
 import { FileExplorer } from "./FileExplorer";
+
+interface SidebarAction {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  placeholder?: boolean;
+  active?: boolean;
+  title?: string;
+}
 
 interface Props {
   selectedSessionId: string | null;
@@ -17,6 +28,7 @@ interface Props {
   onOpenFile?: (filePath: string, fileName: string) => void;
   explorerRefreshKey?: number;
   onAtMention?: (relativePath: string) => void;
+  topActions?: SidebarAction[];
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -196,7 +208,7 @@ function PiAgentTitle() {
   );
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, topActions }: Props) {
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -362,12 +374,12 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       {/* Header */}
       <div
         style={{
-          padding: "12px 10px 10px",
+          padding: "12px 8px 8px",
           borderBottom: "1px solid var(--border)",
           flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, padding: "0 2px" }}>
           <PiAgentTitle />
           <div style={{ display: "flex", gap: 6 }}>
             <button
@@ -458,10 +470,12 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               width: "100%",
               display: "flex",
               alignItems: "center",
-              padding: "6px 10px",
-              background: selectedCwd ? "var(--bg-hover)" : "rgba(37,99,235,0.06)",
+              gap: 8,
+              minHeight: 38,
+              padding: "7px 12px",
+              background: selectedCwd ? "var(--bg)" : "color-mix(in srgb, var(--accent) 7%, var(--bg))",
               border: selectedCwd ? "1px solid var(--border)" : "1px solid rgba(37,99,235,0.4)",
-              borderRadius: 7,
+              borderRadius: 8,
               cursor: "pointer",
               fontSize: 12,
               color: "var(--text)",
@@ -469,6 +483,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               transition: "border-color 0.15s, background 0.15s",
             }}
           >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H9l2 2h7.5A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-10Z" />
+            </svg>
             <span
               style={{
                 flex: 1,
@@ -476,7 +493,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
                 fontFamily: "var(--font-mono)",
-                fontSize: 11,
+                fontSize: 12,
                 color: selectedCwd ? "var(--text)" : "var(--text-dim)",
               }}
               title={selectedCwd ?? ""}
@@ -680,10 +697,59 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             </div>
           )}
         </div>
+
+        {topActions && topActions.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 18 }}>
+            {topActions.map((action) => (
+              <button
+                key={action.label}
+                onClick={action.onClick}
+                disabled={action.disabled}
+                title={action.title ?? action.label}
+                aria-disabled={action.placeholder || action.disabled ? true : undefined}
+                style={{
+                  width: "100%",
+                  height: 40,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 11,
+                  padding: "0 12px",
+                  background: action.active ? "color-mix(in srgb, var(--accent) 11%, transparent)" : "none",
+                  border: "none",
+                  borderRadius: 9,
+                  color: action.disabled ? "var(--text-dim)" : action.active ? "var(--accent)" : "var(--text)",
+                  cursor: action.disabled || action.placeholder ? "default" : "pointer",
+                  opacity: action.disabled ? 0.45 : 1,
+                  textAlign: "left",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  transition: "background 0.12s, color 0.12s",
+                }}
+                onMouseEnter={(e) => {
+                  if (action.disabled || action.active) return;
+                  e.currentTarget.style.background = action.placeholder ? "none" : "var(--bg-hover)";
+                  e.currentTarget.style.color = action.placeholder ? "var(--text)" : "var(--accent)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = action.active ? "color-mix(in srgb, var(--accent) 11%, transparent)" : "none";
+                  e.currentTarget.style.color = action.disabled ? "var(--text-dim)" : action.active ? "var(--accent)" : "var(--text)";
+                }}
+              >
+                <span style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", color: action.active ? "var(--accent)" : "var(--text-muted)", flexShrink: 0 }}>
+                  {action.icon}
+                </span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{action.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Session list */}
       <div style={{ flex: explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto", overflowY: "auto", padding: "0", minHeight: 80 }}>
+        <div style={{ padding: "16px 14px 8px", color: "var(--text-muted)", fontSize: 12, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          Chats
+        </div>
         {loading && (
           <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
             Loading...
@@ -945,7 +1011,7 @@ function SessionItem({
   }, []);
 
   // Fixed-height outer wrapper — content swaps in place so the list never reflows
-  const ITEM_HEIGHT = 54;
+  const ITEM_HEIGHT = 52;
 
   return (
     <div
@@ -956,16 +1022,19 @@ function SessionItem({
         height: ITEM_HEIGHT,
         display: "flex",
         alignItems: "center",
-        paddingLeft: depth > 0 ? depth * 12 + 14 : 14,
+        margin: "2px 6px",
+        paddingLeft: depth > 0 ? depth * 12 + 12 : 12,
         paddingRight: 8,
+        boxSizing: "border-box",
         cursor: confirmDelete || renaming ? "default" : "pointer",
         background: confirmDelete
           ? "rgba(239,68,68,0.06)"
-          : isSelected ? "var(--bg-selected)" : hovered ? "var(--bg-hover)" : "transparent",
-        borderLeft: confirmDelete
-          ? "2px solid #ef4444"
-          : isSelected ? "2px solid var(--accent)" : "2px solid transparent",
-        transition: "background 0.1s",
+          : isSelected ? "color-mix(in srgb, var(--accent) 10%, transparent)" : hovered ? "var(--bg-hover)" : "transparent",
+        border: confirmDelete
+          ? "1px solid rgba(239,68,68,0.22)"
+          : "1px solid transparent",
+        borderRadius: 9,
+        transition: "background 0.1s, border-color 0.1s",
         opacity: deleting ? 0.5 : 1,
         gap: 6,
         overflow: "hidden",
@@ -1052,7 +1121,7 @@ function SessionItem({
             <div
               style={{
                 fontSize: 12,
-                fontWeight: isSelected ? 500 : 400,
+                fontWeight: isSelected ? 650 : 500,
                 lineHeight: 1.4,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -1063,7 +1132,7 @@ function SessionItem({
             >
               {title}
             </div>
-            <div style={{ marginTop: 2, display: "flex", gap: 8, color: "var(--text-dim)", fontSize: 11 }}>
+            <div style={{ marginTop: 2, display: "flex", gap: 7, color: "var(--text-muted)", fontSize: 11 }}>
               <span title={session.modified}>{formatRelativeTime(session.modified)}</span>
               <span>{session.messageCount} msgs</span>
             </div>
