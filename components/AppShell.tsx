@@ -9,10 +9,18 @@ import { TabBar, type Tab } from "./TabBar";
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
 import { AutomationView } from "./AutomationView";
+import { AutomationSkillMode } from "./AutomationSkillMode";
 import { BranchNavigator } from "./BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "./ChatInput";
+
+const AUTOMATION_SKILL_CWD = "~/.pi/skills/offer-workflow-skill";
+const AUTOMATION_SKILL_CONVERSATIONS = [
+  { id: "refine-steps", title: "Refine steps · offer-workflow-skill", meta: "1m ago · 8 msgs" },
+  { id: "offer-validation", title: "Add offer amount validation rule", meta: "12m ago · 14 msgs" },
+  { id: "self-heal-locator", title: "Self-heal attach-button locator", meta: "1h ago · 6 msgs" },
+];
 
 export function AppShell() {
   const router = useRouter();
@@ -27,7 +35,7 @@ export function AppShell() {
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
-  const [activeMainView, setActiveMainView] = useState<"chat" | "automation">("chat");
+  const [activeMainView, setActiveMainView] = useState<"chat" | "automation" | "automation-skill">("chat");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
@@ -230,19 +238,32 @@ export function AppShell() {
     window.location.href = `/api/sessions/${encodeURIComponent(selectedSession.id)}/export`;
   }, [selectedSession]);
 
+  const handleOpenAutomationSkill = useCallback(() => {
+    setActiveMainView("automation-skill");
+    setSelectedSession(null);
+    setNewSessionCwd(null);
+    setBranchTree([]);
+    setBranchActiveLeafId(null);
+    setSystemPrompt(null);
+    setActiveTopPanel(null);
+    setRightPanelOpen(false);
+    router.replace("/", { scroll: false });
+  }, [router]);
+
   // Show chat area if a session is selected, or if we have a cwd to start a new session in
   const effectiveNewSessionCwd = newSessionCwd ?? (selectedSession === null && activeCwd ? activeCwd : null);
   const showAutomation = activeMainView === "automation";
-  const showChat = !showAutomation && (selectedSession !== null || effectiveNewSessionCwd !== null);
+  const showAutomationSkill = activeMainView === "automation-skill";
+  const showChat = !showAutomation && !showAutomationSkill && (selectedSession !== null || effectiveNewSessionCwd !== null);
   // While restoring initial session from URL, don't show the placeholder
-  const showPlaceholder = initialSessionRestored && !showChat && !showAutomation;
+  const showPlaceholder = initialSessionRestored && !showChat && !showAutomation && !showAutomationSkill;
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
 
   const sidebarContent = (
     <>
       <SessionSidebar
-        selectedSessionId={showAutomation ? null : selectedSession?.id ?? null}
+        selectedSessionId={showAutomation || showAutomationSkill ? null : selectedSession?.id ?? null}
         onSelectSession={handleSelectSession}
         onNewSession={handleNewSession}
         initialSessionId={initialSessionId}
@@ -254,6 +275,10 @@ export function AppShell() {
         onOpenFile={handleOpenFile}
         explorerRefreshKey={explorerRefreshKey}
         onAtMention={handleAtMention}
+        automationMode={showAutomationSkill ? {
+          cwdLabel: AUTOMATION_SKILL_CWD,
+          conversations: AUTOMATION_SKILL_CONVERSATIONS,
+        } : undefined}
         topActions={[
           {
             label: "Search",
@@ -307,7 +332,7 @@ export function AppShell() {
               setActiveTopPanel(null);
               router.replace("/", { scroll: false });
             },
-            active: showAutomation,
+            active: showAutomation || showAutomationSkill,
             title: "Automation",
             icon: (
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -504,6 +529,48 @@ export function AppShell() {
               </button>
             </div>
           )}
+          {showAutomationSkill && (
+            <div style={{ display: "flex", alignItems: "stretch", height: "100%" }}>
+              <button
+                title="Export is not connected in this automation preview yet"
+                style={{ display: "flex", alignItems: "center", gap: 6, height: "100%", padding: "0 12px", background: "none", border: "none", borderTop: "2px solid transparent", borderRight: "1px solid var(--border)", color: "var(--text-muted)", cursor: "default", flexShrink: 0, fontSize: 11, whiteSpace: "nowrap" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>Export</span>
+              </button>
+              <button
+                title="Branches is not connected in this automation preview yet"
+                style={{ display: "flex", alignItems: "center", gap: 6, height: "100%", padding: "0 12px", background: "none", border: "none", borderTop: "2px solid transparent", borderRight: "1px solid var(--border)", color: "var(--text-muted)", cursor: "default", flexShrink: 0, fontSize: 11, whiteSpace: "nowrap" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="6" y1="3" x2="6" y2="15" />
+                  <circle cx="18" cy="6" r="3" />
+                  <circle cx="6" cy="18" r="3" />
+                  <path d="M18 9a9 9 0 0 1-9 9" />
+                </svg>
+                <span>Branches</span>
+              </button>
+              <button
+                title="System is not connected in this automation preview yet"
+                style={{ display: "flex", alignItems: "center", gap: 6, height: "100%", padding: "0 12px", background: "none", border: "none", borderTop: "2px solid transparent", borderRight: "1px solid var(--border)", color: "var(--text-muted)", cursor: "default", flexShrink: 0, fontSize: 11, whiteSpace: "nowrap" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <span>System</span>
+              </button>
+              <div style={{ display: "flex", alignItems: "center", padding: "0 12px", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
+                <span style={{ height: 24, display: "inline-flex", alignItems: "center", padding: "0 10px", borderRadius: 12, background: "var(--bg-hover)", color: "var(--text)", fontSize: 11, fontWeight: 600 }}>
+                  Automation
+                </span>
+              </div>
+            </div>
+          )}
           {/* Session stats — right-aligned in top bar */}
           {showChat && (sessionStats || contextUsage) && (() => {
             const t = sessionStats?.tokens;
@@ -634,7 +701,9 @@ export function AppShell() {
         {/* Chat content */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
           {showAutomation ? (
-            <AutomationView />
+            <AutomationView onOpenSkill={handleOpenAutomationSkill} />
+          ) : showAutomationSkill ? (
+            <AutomationSkillMode />
           ) : showChat ? (
             <ChatWindow
               key={sessionKey}
@@ -673,60 +742,66 @@ export function AppShell() {
         </div>
       </div>
 
-      {/* Right panel: file viewer — always mounted, width animated via CSS */}
-      <div
-        className={`right-panel-container${rightPanelOpen ? " right-panel-open" : " right-panel-closed"}`}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          borderLeft: "1px solid var(--border)",
-          background: "var(--bg)",
-        }}
-      >
-        {/* Right panel tab bar */}
-        <div style={{ display: "flex", alignItems: "center", flexShrink: 0, background: "var(--bg-panel)", borderBottom: "1px solid var(--border)", height: 36 }}>
-          <div style={{ flex: 1, overflow: "hidden" }}>
-            <TabBar
-              tabs={fileTabs}
-              activeTabId={activeFileTabId ?? ""}
-              onSelectTab={setActiveFileTabId}
-              onCloseTab={handleCloseFileTab}
-            />
-          </div>
+      {!showAutomationSkill && (
+        <>
+          {/* Right panel: file viewer — always mounted, width animated via CSS */}
+          <div
+            className={`right-panel-container${rightPanelOpen ? " right-panel-open" : " right-panel-closed"}`}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              borderLeft: "1px solid var(--border)",
+              background: "var(--bg)",
+            }}
+          >
+            {/* Right panel tab bar */}
+            <div style={{ display: "flex", alignItems: "center", flexShrink: 0, background: "var(--bg-panel)", borderBottom: "1px solid var(--border)", height: 36 }}>
+              <div style={{ flex: 1, overflow: "hidden" }}>
+                <TabBar
+                  tabs={fileTabs}
+                  activeTabId={activeFileTabId ?? ""}
+                  onSelectTab={setActiveFileTabId}
+                  onCloseTab={handleCloseFileTab}
+                />
+              </div>
 
-        </div>
-
-        {/* File content */}
-        <div style={{ flex: 1, overflow: "hidden" }}>
-          {activeFileTab?.filePath ? (
-            <FileViewer filePath={activeFileTab.filePath} cwd={activeCwd ?? undefined} />
-          ) : (
-            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
-              No file open
             </div>
-          )}
-        </div>
-      </div>
+
+            {/* File content */}
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              {activeFileTab?.filePath ? (
+                <FileViewer filePath={activeFileTab.filePath} cwd={activeCwd ?? undefined} />
+              ) : (
+                <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
+                  No file open
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
     {/* File panel toggle — always visible at top-right */}
-    <button
-      onClick={() => setRightPanelOpen((v) => !v)}
-      title={rightPanelOpen ? "Hide file panel" : "Show file panel"}
-      style={{
-        position: "fixed", top: 0, right: 0, zIndex: 300,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 36, height: 36, padding: 0,
-        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
-        color: rightPanelOpen ? "var(--text)" : "var(--text-muted)",
-        cursor: "pointer", transition: "color 0.12s",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = rightPanelOpen ? "var(--text)" : "var(--text-muted)"; }}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
-      </svg>
-    </button>
+    {!showAutomationSkill && (
+      <button
+        onClick={() => setRightPanelOpen((v) => !v)}
+        title={rightPanelOpen ? "Hide file panel" : "Show file panel"}
+        style={{
+          position: "fixed", top: 0, right: 0, zIndex: 300,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: 36, height: 36, padding: 0,
+          background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
+          color: rightPanelOpen ? "var(--text)" : "var(--text-muted)",
+          cursor: "pointer", transition: "color 0.12s",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = rightPanelOpen ? "var(--text)" : "var(--text-muted)"; }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
+        </svg>
+      </button>
+    )}
     {modelsConfigOpen && <ModelsConfig onClose={() => { setModelsConfigOpen(false); setModelsRefreshKey((k) => k + 1); }} />}
     {skillsConfigOpen && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
       <SkillsConfig cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
 
@@ -26,6 +26,11 @@ type ToggleOrigin = { x: number; y: number };
 
 export function useTheme() {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const toggleTheme = useCallback((origin?: ToggleOrigin) => {
     const next: Theme = getSnapshot() === "dark" ? "light" : "dark";
@@ -81,5 +86,6 @@ export function useTheme() {
       });
   }, []);
 
-  return { theme, toggleTheme, isDark: theme === "dark" };
+  const stableTheme = mounted ? theme : "light";
+  return { theme: stableTheme, toggleTheme, isDark: stableTheme === "dark" };
 }

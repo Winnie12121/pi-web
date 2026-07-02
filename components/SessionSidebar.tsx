@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import type { SessionInfo } from "@/lib/types";
 import { FileExplorer } from "./FileExplorer";
+import { FolderIcon, getFileIcon } from "./FileIcons";
 
 interface SidebarAction {
   label: string;
@@ -29,6 +30,10 @@ interface Props {
   explorerRefreshKey?: number;
   onAtMention?: (relativePath: string) => void;
   topActions?: SidebarAction[];
+  automationMode?: {
+    cwdLabel: string;
+    conversations: Array<{ id: string; title: string; meta: string }>;
+  };
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -208,7 +213,108 @@ function PiAgentTitle() {
   );
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, topActions }: Props) {
+interface MockFileNode {
+  name: string;
+  isDir: boolean;
+  children?: MockFileNode[];
+}
+
+const MOCK_SKILL_FILES: MockFileNode[] = [
+  {
+    name: "offer-workflow-skill",
+    isDir: true,
+    children: [
+      { name: "skill.md", isDir: false },
+      { name: "scripts", isDir: true, children: [{ name: "README.md", isDir: false }] },
+      {
+        name: "references",
+        isDir: true,
+        children: [
+          { name: "recorded-steps.md", isDir: false },
+          { name: "locator-notes.md", isDir: false },
+          { name: "example-input.md", isDir: false },
+        ],
+      },
+      { name: "outputs", isDir: true, children: [{ name: "latest-result.json", isDir: false }] },
+    ],
+  },
+];
+
+function MockSkillTreeNode({ node, depth }: { node: MockFileNode; depth: number }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div>
+      <div
+        onClick={() => node.isDir && setOpen((v) => !v)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          height: 24,
+          paddingLeft: 8 + depth * 14,
+          paddingRight: 8,
+          borderRadius: 4,
+          cursor: node.isDir ? "pointer" : "default",
+          color: "var(--text)",
+          userSelect: "none",
+        }}
+      >
+        {node.isDir ? (
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 10 10"
+            fill="none"
+            stroke="var(--text-dim)"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ flexShrink: 0, transform: open ? "rotate(90deg)" : "none", transition: "transform 0.1s" }}
+          >
+            <polyline points="3 2 7 5 3 8" />
+          </svg>
+        ) : (
+          <span style={{ width: 10, flexShrink: 0 }} />
+        )}
+        <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+          {node.isDir ? <FolderIcon size={14} open={open} /> : getFileIcon(node.name, 14)}
+        </span>
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, fontFamily: node.name.endsWith(".md") || node.name.endsWith(".json") ? "var(--font-mono)" : "inherit", color: node.isDir ? "var(--text)" : "var(--text-muted)" }}>
+          {node.name}
+        </span>
+      </div>
+      {node.isDir && open && node.children?.map((child) => (
+        <MockSkillTreeNode key={`${node.name}/${child.name}`} node={child} depth={depth + 1} />
+      ))}
+    </div>
+  );
+}
+
+function MockSkillExplorer({ cwdLabel }: { cwdLabel: string }) {
+  return (
+    <div style={{ padding: "2px 4px" }}>
+      <div style={{ margin: "4px 6px 10px", padding: "9px 10px", borderRadius: 9, background: "var(--bg-hover)", color: "var(--text-muted)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text)", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v3" />
+            <path d="m9 12 2 2 4-5" />
+            <path d="M3 12h3" />
+            <path d="M21 12h-3" />
+          </svg>
+          Skill Workspace
+        </div>
+        <div style={{ marginTop: 6, fontSize: 11, fontFamily: "var(--font-mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={cwdLabel}>
+          {cwdLabel}
+        </div>
+      </div>
+      {MOCK_SKILL_FILES.map((node) => (
+        <MockSkillTreeNode key={node.name} node={node} depth={0} />
+      ))}
+    </div>
+  );
+}
+
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onAtMention, topActions, automationMode }: Props) {
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -365,6 +471,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const filteredSessions = selectedCwd
     ? allSessions.filter((s) => s.cwd === selectedCwd)
     : allSessions;
+  const isAutomationMode = Boolean(automationMode);
+  const sidebarCwdLabel = automationMode?.cwdLabel ?? (selectedCwd ? shortenCwd(selectedCwd, homeDir) : null);
 
   // Build parent-child tree within the filtered set
   const sessionTree = buildSessionTree(filteredSessions);
@@ -465,7 +573,10 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         {/* CWD picker */}
         <div ref={dropdownRef} style={{ position: "relative" }}>
           <button
-            onClick={() => setDropdownOpen((v) => !v)}
+            onClick={() => {
+              if (isAutomationMode) return;
+              setDropdownOpen((v) => !v);
+            }}
             style={{
               width: "100%",
               display: "flex",
@@ -473,10 +584,10 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               gap: 8,
               minHeight: 38,
               padding: "7px 12px",
-              background: selectedCwd ? "var(--bg)" : "color-mix(in srgb, var(--accent) 7%, var(--bg))",
-              border: selectedCwd ? "1px solid var(--border)" : "1px solid rgba(37,99,235,0.4)",
+              background: sidebarCwdLabel ? "var(--bg)" : "color-mix(in srgb, var(--accent) 7%, var(--bg))",
+              border: sidebarCwdLabel ? "1px solid var(--border)" : "1px solid rgba(37,99,235,0.4)",
               borderRadius: 8,
-              cursor: "pointer",
+              cursor: isAutomationMode ? "default" : "pointer",
               fontSize: 12,
               color: "var(--text)",
               textAlign: "left",
@@ -494,15 +605,15 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 whiteSpace: "nowrap",
                 fontFamily: "var(--font-mono)",
                 fontSize: 12,
-                color: selectedCwd ? "var(--text)" : "var(--text-dim)",
+                color: sidebarCwdLabel ? "var(--text)" : "var(--text-dim)",
               }}
-              title={selectedCwd ?? ""}
+              title={automationMode?.cwdLabel ?? selectedCwd ?? ""}
             >
-              {selectedCwd ? shortenCwd(selectedCwd, homeDir) : (initialSessionId && !restoredRef.current ? "" : "Select project…")}
+              {sidebarCwdLabel ?? (initialSessionId && !restoredRef.current ? "" : "Select project…")}
             </span>
           </button>
 
-          {dropdownOpen && (
+          {dropdownOpen && !isAutomationMode && (
             <div
               style={{
                 position: "absolute",
@@ -746,26 +857,53 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       </div>
 
       {/* Session list */}
-      <div style={{ flex: explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto", overflowY: "auto", padding: "0", minHeight: 80 }}>
+      <div style={{ flex: explorerOpen && (automationMode || selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto", overflowY: "auto", padding: "0", minHeight: 80 }}>
         <div style={{ padding: "16px 14px 8px", color: "var(--text-muted)", fontSize: 12, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-          Chats
+          {automationMode ? "Skill Conversations" : "Chats"}
         </div>
-        {loading && (
+        {automationMode ? (
+          automationMode.conversations.map((conversation, index) => (
+            <div
+              key={conversation.id}
+              style={{
+                minHeight: 52,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                margin: "2px 6px",
+                padding: "7px 12px",
+                boxSizing: "border-box",
+                borderRadius: 9,
+                background: index === 0 ? "color-mix(in srgb, var(--accent) 9%, transparent)" : "transparent",
+                border: "1px solid transparent",
+                color: "var(--text)",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 650, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {conversation.title}
+              </div>
+              <div style={{ marginTop: 5, fontSize: 11, color: "var(--text-muted)" }}>
+                {conversation.meta}
+              </div>
+            </div>
+          ))
+        ) : loading && (
           <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
             Loading...
           </div>
         )}
-        {error && (
+        {!automationMode && error && (
           <div style={{ padding: "12px 14px", color: "#f87171", fontSize: 12 }}>
             {error}
           </div>
         )}
-        {!loading && !error && filteredSessions.length === 0 && (
+        {!automationMode && !loading && !error && filteredSessions.length === 0 && (
           <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
             No sessions found
           </div>
         )}
-        {sessionTree.map((node) => (
+        {!automationMode && sessionTree.map((node) => (
           <SessionTreeItem
             key={node.session.id}
             node={node}
@@ -782,7 +920,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       </div>
 
       {/* File Explorer section */}
-      {(selectedCwdProp || selectedCwd) && (
+      {(automationMode || selectedCwdProp || selectedCwd) && (
         <div
           style={{
             borderTop: "1px solid var(--border)",
@@ -858,12 +996,16 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           </div>
           {explorerOpen && (
             <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-              <FileExplorer
-                cwd={selectedCwdProp ?? selectedCwd!}
-                onOpenFile={onOpenFile ?? (() => {})}
-                refreshKey={explorerKey}
-                onAtMention={onAtMention}
-              />
+              {automationMode ? (
+                <MockSkillExplorer cwdLabel={automationMode.cwdLabel} />
+              ) : (
+                <FileExplorer
+                  cwd={selectedCwdProp ?? selectedCwd!}
+                  onOpenFile={onOpenFile ?? (() => {})}
+                  refreshKey={explorerKey}
+                  onAtMention={onAtMention}
+                />
+              )}
             </div>
           )}
         </div>

@@ -40,7 +40,26 @@ function shortenPath(path: string): string {
   return path.replace(/^\/(?:Users|home)\/[^/]+/, "~");
 }
 
-export function AutomationView() {
+interface Props {
+  onOpenSkill?: (skillName: string) => void;
+}
+
+interface DisplayAutomationSkill extends AutomationSkill {
+  mock?: boolean;
+}
+
+const MOCK_AUTOMATION_SKILL: DisplayAutomationSkill = {
+  name: "offer-workflow-skill",
+  description: "Create and send candidate offer emails, then update the tracker.",
+  filePath: "mock:offer-workflow-skill",
+  baseDir: "~/.pi/skills/offer-workflow-skill",
+  source: "manual",
+  lastRun: "Never",
+  status: "ready",
+  mock: true,
+};
+
+export function AutomationView({ onOpenSkill }: Props) {
   const [skills, setSkills] = useState<AutomationSkill[]>([]);
   const [skillsRoot, setSkillsRoot] = useState("~/.pi/agent/skills");
   const [loading, setLoading] = useState(true);
@@ -95,6 +114,11 @@ export function AutomationView() {
       setDeletingPath(null);
     }
   }, [deleteTarget]);
+
+  const displaySkills: DisplayAutomationSkill[] = [
+    MOCK_AUTOMATION_SKILL,
+    ...skills.filter((skill) => skill.name !== MOCK_AUTOMATION_SKILL.name),
+  ];
 
   return (
     <div style={{ height: "100%", overflowY: "auto", background: "var(--bg)" }}>
@@ -151,18 +175,41 @@ export function AutomationView() {
             <div style={{ padding: 22, color: "var(--text-muted)", fontSize: ui.font.body }}>Loading...</div>
           ) : error ? (
             <div style={{ padding: 22, color: "#ef4444", fontSize: ui.font.body }}>{error}</div>
-          ) : skills.length === 0 ? (
+          ) : displaySkills.length === 0 ? (
             <div style={{ padding: "32px 22px", color: "var(--text-muted)", fontSize: ui.font.body, lineHeight: 1.55 }}>
               No automation skills yet. Create a blank workspace to get started.
             </div>
           ) : (
-            skills.map((skill) => (
+            displaySkills.map((skill) => (
               <div
                 key={skill.filePath}
                 style={{ display: "grid", gridTemplateColumns: ui.automation.tableColumns, gap: 12, alignItems: "center", padding: "14px 16px", borderBottom: "1px solid var(--border)" }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: ui.font.body, fontWeight: ui.weight.bold, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{skill.name}</div>
+                  <button
+                    onClick={() => {
+                      if (skill.mock) onOpenSkill?.(skill.name);
+                    }}
+                    title={skill.mock ? "Open automation workspace" : skill.name}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      padding: 0,
+                      border: "none",
+                      background: "none",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: ui.font.body,
+                      fontWeight: ui.weight.bold,
+                      color: skill.mock ? "var(--accent)" : "var(--text)",
+                      cursor: skill.mock ? "pointer" : "default",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      textAlign: "left",
+                    }}
+                  >
+                    {skill.name}
+                  </button>
                   <div style={{ marginTop: 4, fontSize: ui.font.label, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{skill.description}</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)", fontSize: ui.font.label }}>
@@ -173,9 +220,12 @@ export function AutomationView() {
                 <div><StatusPill status={skill.status} /></div>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 5 }}>
                   <button
-                    onClick={() => setEditingSkill(skill)}
-                    title="Edit automation"
-                    style={{ width: ui.control.iconButton, height: ui.control.iconButton, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", borderRadius: ui.radius.control, background: "var(--bg)", color: "var(--text-muted)", cursor: "pointer", padding: 0 }}
+                    onClick={() => {
+                      if (!skill.mock) setEditingSkill(skill);
+                    }}
+                    disabled={skill.mock}
+                    title={skill.mock ? "Mock workspace editing is not available yet" : "Edit automation"}
+                    style={{ width: ui.control.iconButton, height: ui.control.iconButton, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", borderRadius: ui.radius.control, background: "var(--bg)", color: skill.mock ? "var(--text-dim)" : "var(--text-muted)", cursor: skill.mock ? "not-allowed" : "pointer", padding: 0, opacity: skill.mock ? 0.45 : 1 }}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 20h9" />
@@ -183,10 +233,12 @@ export function AutomationView() {
                     </svg>
                   </button>
                   <button
-                    onClick={() => setDeleteTarget(skill)}
-                    disabled={deletingPath === skill.filePath}
-                    title="Delete automation"
-                    style={{ width: ui.control.iconButton, height: ui.control.iconButton, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", borderRadius: ui.radius.control, background: "var(--bg)", color: deletingPath === skill.filePath ? "var(--text-dim)" : "#ef4444", cursor: deletingPath === skill.filePath ? "wait" : "pointer", padding: 0, opacity: deletingPath === skill.filePath ? 0.55 : 1 }}
+                    onClick={() => {
+                      if (!skill.mock) setDeleteTarget(skill);
+                    }}
+                    disabled={skill.mock || deletingPath === skill.filePath}
+                    title={skill.mock ? "Mock workspace deletion is not available yet" : "Delete automation"}
+                    style={{ width: ui.control.iconButton, height: ui.control.iconButton, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", borderRadius: ui.radius.control, background: "var(--bg)", color: (skill.mock || deletingPath === skill.filePath) ? "var(--text-dim)" : "#ef4444", cursor: skill.mock ? "not-allowed" : deletingPath === skill.filePath ? "wait" : "pointer", padding: 0, opacity: (skill.mock || deletingPath === skill.filePath) ? 0.55 : 1 }}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 6h18" />
