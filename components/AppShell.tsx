@@ -8,6 +8,7 @@ import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
+import { AutomationView } from "./AutomationView";
 import { BranchNavigator } from "./BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
@@ -26,6 +27,7 @@ export function AppShell() {
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
+  const [activeMainView, setActiveMainView] = useState<"chat" | "automation">("chat");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
@@ -123,6 +125,7 @@ export function AppShell() {
   }, [router]);
 
   const handleSelectSession = useCallback((session: SessionInfo, isRestore = false) => {
+    setActiveMainView("chat");
     setNewSessionCwd(null);
     setSelectedSession(session);
     setSessionKey((k) => k + 1);
@@ -142,6 +145,7 @@ export function AppShell() {
   }, [router]);
 
   const handleNewSession = useCallback((_sessionId: string, cwd: string) => {
+    setActiveMainView("chat");
     setSelectedSession(null);
     setNewSessionCwd(cwd);
     setSessionKey((k) => k + 1);
@@ -154,6 +158,7 @@ export function AppShell() {
 
   // Called by ChatWindow when a new session gets its real id from pi
   const handleSessionCreated = useCallback((session: SessionInfo) => {
+    setActiveMainView("chat");
     setNewSessionCwd(null);
     setSelectedSession(session);
     setRefreshKey((k) => k + 1);
@@ -166,6 +171,7 @@ export function AppShell() {
   }, []);
 
   const handleSessionForked = useCallback((newSessionId: string) => {
+    setActiveMainView("chat");
     setRefreshKey((k) => k + 1);
     setSessionKey((k) => k + 1);
     setNewSessionCwd(null);
@@ -191,6 +197,7 @@ export function AppShell() {
       setBranchActiveLeafId(null);
       setSystemPrompt(null);
       setActiveTopPanel(null);
+      setActiveMainView("chat");
       router.replace("/", { scroll: false });
     }
   }, [selectedSession, router]);
@@ -225,16 +232,17 @@ export function AppShell() {
 
   // Show chat area if a session is selected, or if we have a cwd to start a new session in
   const effectiveNewSessionCwd = newSessionCwd ?? (selectedSession === null && activeCwd ? activeCwd : null);
-  const showChat = selectedSession !== null || effectiveNewSessionCwd !== null;
+  const showAutomation = activeMainView === "automation";
+  const showChat = !showAutomation && (selectedSession !== null || effectiveNewSessionCwd !== null);
   // While restoring initial session from URL, don't show the placeholder
-  const showPlaceholder = initialSessionRestored && !showChat;
+  const showPlaceholder = initialSessionRestored && !showChat && !showAutomation;
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
 
   const sidebarContent = (
     <>
       <SessionSidebar
-        selectedSessionId={selectedSession?.id ?? null}
+        selectedSessionId={showAutomation ? null : selectedSession?.id ?? null}
         onSelectSession={handleSelectSession}
         onNewSession={handleNewSession}
         initialSessionId={initialSessionId}
@@ -294,9 +302,13 @@ export function AppShell() {
           },
           {
             label: "Automation",
-            onClick: () => {},
-            placeholder: true,
-            title: "Automation coming soon",
+            onClick: () => {
+              setActiveMainView("automation");
+              setActiveTopPanel(null);
+              router.replace("/", { scroll: false });
+            },
+            active: showAutomation,
+            title: "Automation",
             icon: (
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="4" y="4" width="7" height="7" rx="2" />
@@ -621,7 +633,9 @@ export function AppShell() {
 
         {/* Chat content */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-          {showChat ? (
+          {showAutomation ? (
+            <AutomationView />
+          ) : showChat ? (
             <ChatWindow
               key={sessionKey}
               session={selectedSession}
