@@ -68,12 +68,20 @@ function StatusBadge({ status }: { status: "ready" | "running" | "completed" }) 
   );
 }
 
-function SkillWorkspaceHeader() {
+function SkillWorkspaceHeader({ onBackToList }: { onBackToList?: () => void }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "16px 22px", borderBottom: "1px solid var(--border)", background: "var(--bg)" }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--text-muted)", fontSize: ui.font.body, marginBottom: 8 }}>
-          <span>Automation</span>
+          <button
+            onClick={onBackToList}
+            title="Back to automation list"
+            style={{ padding: 0, border: "none", background: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "inherit" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+          >
+            Automation
+          </button>
           <span style={{ color: "var(--text-dim)" }}>/</span>
           <span style={{ color: "var(--text)" }}>{SKILL_NAME}</span>
         </div>
@@ -263,13 +271,13 @@ function RunConsole() {
   );
 }
 
-export function AutomationSkillMode() {
+export function AutomationSkillMode({ onBackToList }: { onBackToList?: () => void }) {
   const [activeTab, setActiveTab] = useState<"chat" | "skill">("skill");
 
   return (
     <div style={{ height: "100%", minWidth: 0, display: "flex", overflow: "hidden", background: "var(--bg)" }}>
       <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <SkillWorkspaceHeader />
+        <SkillWorkspaceHeader onBackToList={onBackToList} />
         <SkillTabs activeTab={activeTab} onSelect={setActiveTab} />
         <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
           {activeTab === "skill" ? <SkillMarkdownView /> : <SkillChatView />}

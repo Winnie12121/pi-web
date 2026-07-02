@@ -416,7 +416,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         setCustomPathError(data.error ?? `HTTP ${res.status}`);
         return;
       }
-      setSelectedCwd(data.cwd ?? path);
+      const nextCwd = data.cwd ?? path;
+      setSelectedCwd(nextCwd);
+      if (automationMode && nextCwd === selectedCwd) onCwdChange?.(nextCwd);
       setCustomPathOpen(false);
       setCustomPathValue("");
       setDropdownOpen(false);
@@ -425,7 +427,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     } finally {
       setCustomPathValidating(false);
     }
-  }, [customPathValue, customPathValidating]);
+  }, [automationMode, customPathValue, customPathValidating, onCwdChange, selectedCwd]);
 
   const handleDefaultCwd = useCallback(async () => {
     try {
@@ -433,6 +435,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       const data = await res.json() as { cwd?: string; error?: string };
       if (data.cwd) {
         setSelectedCwd(data.cwd);
+        if (automationMode && data.cwd === selectedCwd) onCwdChange?.(data.cwd);
         setCustomPathOpen(false);
         setCustomPathValue("");
         setCustomPathError(null);
@@ -441,6 +444,13 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     } catch {
       // ignore
     }
+  }, [automationMode, onCwdChange, selectedCwd]);
+
+  const openCwdDropdown = useCallback(() => {
+    setDropdownOpen((v) => !v);
+    setCustomPathOpen(false);
+    setCustomPathValue("");
+    setCustomPathError(null);
   }, []);
 
   // Close dropdown on outside click
@@ -471,7 +481,6 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const filteredSessions = selectedCwd
     ? allSessions.filter((s) => s.cwd === selectedCwd)
     : allSessions;
-  const isAutomationMode = Boolean(automationMode);
   const sidebarCwdLabel = automationMode?.cwdLabel ?? (selectedCwd ? shortenCwd(selectedCwd, homeDir) : null);
 
   // Build parent-child tree within the filtered set
@@ -573,10 +582,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         {/* CWD picker */}
         <div ref={dropdownRef} style={{ position: "relative" }}>
           <button
-            onClick={() => {
-              if (isAutomationMode) return;
-              setDropdownOpen((v) => !v);
-            }}
+            onClick={openCwdDropdown}
             style={{
               width: "100%",
               display: "flex",
@@ -587,7 +593,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               background: sidebarCwdLabel ? "var(--bg)" : "color-mix(in srgb, var(--accent) 7%, var(--bg))",
               border: sidebarCwdLabel ? "1px solid var(--border)" : "1px solid rgba(37,99,235,0.4)",
               borderRadius: 8,
-              cursor: isAutomationMode ? "default" : "pointer",
+              cursor: "pointer",
               fontSize: 12,
               color: "var(--text)",
               textAlign: "left",
@@ -613,7 +619,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             </span>
           </button>
 
-          {dropdownOpen && !isAutomationMode && (
+          {dropdownOpen && (
             <div
               style={{
                 position: "absolute",
@@ -633,6 +639,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   key={cwd}
                   onClick={() => {
                     setSelectedCwd(cwd);
+                    if (automationMode && cwd === selectedCwd) onCwdChange?.(cwd);
                     setCustomPathOpen(false);
                     setCustomPathValue("");
                     setCustomPathError(null);

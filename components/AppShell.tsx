@@ -114,6 +114,7 @@ export function AppShell() {
     setActiveCwd(cwd);
     // Skip if cwd is null (initial mount) or during the initial URL restore.
     if (!cwd || suppressCwdBumpRef.current) return;
+    setActiveMainView((view) => view === "automation-skill" ? "chat" : view);
     // Close any session that belongs to a different cwd — it no longer
     // matches the selected project directory.
     setSelectedSession((prev) => {
@@ -247,6 +248,12 @@ export function AppShell() {
     setSystemPrompt(null);
     setActiveTopPanel(null);
     setRightPanelOpen(false);
+    router.replace("/", { scroll: false });
+  }, [router]);
+
+  const handleBackToAutomationList = useCallback(() => {
+    setActiveMainView("automation");
+    setActiveTopPanel(null);
     router.replace("/", { scroll: false });
   }, [router]);
 
@@ -703,7 +710,7 @@ export function AppShell() {
           {showAutomation ? (
             <AutomationView onOpenSkill={handleOpenAutomationSkill} />
           ) : showAutomationSkill ? (
-            <AutomationSkillMode />
+            <AutomationSkillMode onBackToList={handleBackToAutomationList} />
           ) : showChat ? (
             <ChatWindow
               key={sessionKey}
