@@ -177,7 +177,7 @@ export function CreateAutomationModal({ skill, onClose, onCreated, onUpdated }: 
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="offer-workflow-skill"
+              placeholder="my-automation-skill"
               autoFocus
               style={{ height: ui.control.inputHeight, border: "1px solid var(--border)", borderRadius: ui.radius.control, background: "var(--bg-panel)", color: "var(--text)", padding: "0 10px", fontSize: ui.font.body, outline: "none", fontFamily: "var(--font-mono)", boxSizing: "border-box" }}
             />
@@ -193,7 +193,7 @@ export function CreateAutomationModal({ skill, onClose, onCreated, onUpdated }: 
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Automate offer email creation and tracker updates"
+              placeholder="Describe what this automation should do"
               style={{ height: ui.control.inputHeight, border: "1px solid var(--border)", borderRadius: ui.radius.control, background: "var(--bg-panel)", color: "var(--text)", padding: "0 10px", fontSize: ui.font.body, outline: "none", boxSizing: "border-box" }}
             />
           </label>

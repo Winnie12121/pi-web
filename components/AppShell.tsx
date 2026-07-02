@@ -9,18 +9,14 @@ import { TabBar, type Tab } from "./TabBar";
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
 import { AutomationView } from "./AutomationView";
-import { AutomationSkillMode } from "./AutomationSkillMode";
 import { BranchNavigator } from "./BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "./ChatInput";
 
-const AUTOMATION_SKILL_CWD = "~/.pi/skills/offer-workflow-skill";
-const AUTOMATION_SKILL_CONVERSATIONS = [
-  { id: "refine-steps", title: "Refine steps · offer-workflow-skill", meta: "1m ago · 8 msgs" },
-  { id: "offer-validation", title: "Add offer amount validation rule", meta: "12m ago · 14 msgs" },
-  { id: "self-heal-locator", title: "Self-heal attach-button locator", meta: "1h ago · 6 msgs" },
-];
+function shortenHomePath(filePath: string): string {
+  return filePath.replace(/^\/(?:Users|home)\/[^/]+/, "~");
+}
 
 export function AppShell() {
   const router = useRouter();
@@ -36,6 +32,12 @@ export function AppShell() {
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [activeMainView, setActiveMainView] = useState<"chat" | "automation" | "automation-skill">("chat");
+  const [automationSkillName, setAutomationSkillName] = useState<string | null>(null);
+  const [automationSkillCwd, setAutomationSkillCwd] = useState<string | null>(null);
+  const [automationSkillSession, setAutomationSkillSession] = useState<SessionInfo | null>(null);
+  const [automationWorkspaceLoading, setAutomationWorkspaceLoading] = useState(false);
+  const [automationWorkspaceError, setAutomationWorkspaceError] = useState<string | null>(null);
+  const [automationSessionKey, setAutomationSessionKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
@@ -115,6 +117,13 @@ export function AppShell() {
     // Skip if cwd is null (initial mount) or during the initial URL restore.
     if (!cwd || suppressCwdBumpRef.current) return;
     setActiveMainView((view) => view === "automation-skill" ? "chat" : view);
+    if (activeMainView === "automation-skill") {
+      setAutomationSkillSession(null);
+      setAutomationSkillCwd(null);
+      setAutomationSkillName(null);
+      setAutomationWorkspaceError(null);
+      setAutomationWorkspaceLoading(false);
+    }
     // Close any session that belongs to a different cwd — it no longer
     // matches the selected project directory.
     setSelectedSession((prev) => {
@@ -131,10 +140,21 @@ export function AppShell() {
     setSystemPrompt(null);
     setActiveTopPanel(null);
     router.replace("/", { scroll: false });
-  }, [router]);
+  }, [activeMainView, router]);
 
   const handleSelectSession = useCallback((session: SessionInfo, isRestore = false) => {
+    if (activeMainView === "automation-skill" && automationSkillCwd && session.cwd === automationSkillCwd) {
+      setAutomationSkillSession(session);
+      setAutomationSessionKey((k) => k + 1);
+      setSystemPrompt(null);
+      setInitialSessionRestored(true);
+      setActiveTopPanel(null);
+      router.replace("/", { scroll: false });
+      return;
+    }
+
     setActiveMainView("chat");
+    setAutomationSkillSession(null);
     setNewSessionCwd(null);
     setSelectedSession(session);
     setSessionKey((k) => k + 1);
@@ -151,10 +171,22 @@ export function AppShell() {
     if (!isRestore) {
       router.replace(`?session=${encodeURIComponent(session.id)}`, { scroll: false });
     }
-  }, [router]);
+  }, [activeMainView, automationSkillCwd, router]);
 
   const handleNewSession = useCallback((_sessionId: string, cwd: string) => {
+    if (activeMainView === "automation-skill" && automationSkillCwd && cwd === automationSkillCwd) {
+      setAutomationSkillSession(null);
+      setAutomationSessionKey((k) => k + 1);
+      setBranchTree([]);
+      setBranchActiveLeafId(null);
+      setSystemPrompt(null);
+      setActiveTopPanel(null);
+      router.replace("/", { scroll: false });
+      return;
+    }
+
     setActiveMainView("chat");
+    setAutomationSkillSession(null);
     setSelectedSession(null);
     setNewSessionCwd(cwd);
     setSessionKey((k) => k + 1);
@@ -163,16 +195,23 @@ export function AppShell() {
     setSystemPrompt(null);
     setActiveTopPanel(null);
     router.replace("/", { scroll: false });
-  }, [router]);
+  }, [activeMainView, automationSkillCwd, router]);
 
   // Called by ChatWindow when a new session gets its real id from pi
   const handleSessionCreated = useCallback((session: SessionInfo) => {
+    if (activeMainView === "automation-skill" && automationSkillCwd && session.cwd === automationSkillCwd) {
+      setAutomationSkillSession(session);
+      setRefreshKey((k) => k + 1);
+      router.replace("/", { scroll: false });
+      return;
+    }
+
     setActiveMainView("chat");
     setNewSessionCwd(null);
     setSelectedSession(session);
     setRefreshKey((k) => k + 1);
     router.replace(`?session=${encodeURIComponent(session.id)}`, { scroll: false });
-  }, [router]);
+  }, [activeMainView, automationSkillCwd, router]);
 
   const handleAgentEnd = useCallback(() => {
     setRefreshKey((k) => k + 1);
@@ -180,6 +219,17 @@ export function AppShell() {
   }, []);
 
   const handleSessionForked = useCallback((newSessionId: string) => {
+    if (activeMainView === "automation-skill") {
+      setRefreshKey((k) => k + 1);
+      setAutomationSessionKey((k) => k + 1);
+      setAutomationSkillSession((prev) => ({
+        ...(prev ?? { path: "", cwd: automationSkillCwd ?? "", created: "", modified: "", messageCount: 0, firstMessage: "" }),
+        id: newSessionId,
+      }));
+      router.replace("/", { scroll: false });
+      return;
+    }
+
     setActiveMainView("chat");
     setRefreshKey((k) => k + 1);
     setSessionKey((k) => k + 1);
@@ -189,7 +239,7 @@ export function AppShell() {
       id: newSessionId,
     }));
     router.replace(`?session=${encodeURIComponent(newSessionId)}`, { scroll: false });
-  }, [router]);
+  }, [activeMainView, automationSkillCwd, router]);
 
   const handleInitialRestoreDone = useCallback(() => {
     setInitialSessionRestored(true);
@@ -197,6 +247,16 @@ export function AppShell() {
 
   const handleSessionDeleted = useCallback((sessionId: string) => {
     setRefreshKey((k) => k + 1);
+    if (automationSkillSession?.id === sessionId) {
+      setAutomationSkillSession(null);
+      setAutomationSessionKey((k) => k + 1);
+      setBranchTree([]);
+      setBranchActiveLeafId(null);
+      setSystemPrompt(null);
+      setActiveTopPanel(null);
+      router.replace("/", { scroll: false });
+      return;
+    }
     if (selectedSession?.id === sessionId) {
       const cwd = selectedSession.cwd;
       setSelectedSession(null);
@@ -209,7 +269,7 @@ export function AppShell() {
       setActiveMainView("chat");
       router.replace("/", { scroll: false });
     }
-  }, [selectedSession, router]);
+  }, [automationSkillSession, selectedSession, router]);
 
   const handleOpenFile = useCallback((filePath: string, fileName: string) => {
     const tabId = `file:${filePath}`;
@@ -235,12 +295,19 @@ export function AppShell() {
   }, [fileTabs]);
 
   const handleExportSession = useCallback(() => {
-    if (!selectedSession) return;
-    window.location.href = `/api/sessions/${encodeURIComponent(selectedSession.id)}/export`;
-  }, [selectedSession]);
+    const session = activeMainView === "automation-skill" ? automationSkillSession : selectedSession;
+    if (!session) return;
+    window.location.href = `/api/sessions/${encodeURIComponent(session.id)}/export`;
+  }, [activeMainView, automationSkillSession, selectedSession]);
 
-  const handleOpenAutomationSkill = useCallback(() => {
+  const handleOpenAutomationSkill = useCallback((skillName: string) => {
     setActiveMainView("automation-skill");
+    setAutomationSkillName(skillName);
+    setAutomationSkillCwd(null);
+    setAutomationSkillSession(null);
+    setAutomationWorkspaceLoading(true);
+    setAutomationWorkspaceError(null);
+    setAutomationSessionKey((k) => k + 1);
     setSelectedSession(null);
     setNewSessionCwd(null);
     setBranchTree([]);
@@ -249,10 +316,36 @@ export function AppShell() {
     setActiveTopPanel(null);
     setRightPanelOpen(false);
     router.replace("/", { scroll: false });
+
+    fetch("/api/automation/workspace", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: skillName }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({})) as { cwd?: string; name?: string; error?: string };
+        if (!res.ok || data.error || !data.cwd) {
+          throw new Error(data.error ?? `HTTP ${res.status}`);
+        }
+        setAutomationSkillCwd(data.cwd);
+        setAutomationSkillName(data.name ?? skillName);
+        setAutomationSessionKey((k) => k + 1);
+        setRefreshKey((k) => k + 1);
+        setExplorerRefreshKey((k) => k + 1);
+      })
+      .catch((e) => {
+        setAutomationWorkspaceError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => setAutomationWorkspaceLoading(false));
   }, [router]);
 
   const handleBackToAutomationList = useCallback(() => {
     setActiveMainView("automation");
+    setAutomationSkillSession(null);
+    setAutomationSkillCwd(null);
+    setAutomationSkillName(null);
+    setAutomationWorkspaceError(null);
+    setAutomationWorkspaceLoading(false);
     setActiveTopPanel(null);
     router.replace("/", { scroll: false });
   }, [router]);
@@ -266,25 +359,29 @@ export function AppShell() {
   const showPlaceholder = initialSessionRestored && !showChat && !showAutomation && !showAutomationSkill;
 
   const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
+  const activeTopSession = showAutomationSkill ? automationSkillSession : selectedSession;
+  const automationSkillCwdLabel = automationSkillCwd
+    ? shortenHomePath(automationSkillCwd)
+    : automationSkillName ? `Preparing ${automationSkillName}...` : "Preparing workspace...";
 
   const sidebarContent = (
     <>
       <SessionSidebar
-        selectedSessionId={showAutomation || showAutomationSkill ? null : selectedSession?.id ?? null}
+        selectedSessionId={showAutomation ? null : showAutomationSkill ? automationSkillSession?.id ?? null : selectedSession?.id ?? null}
         onSelectSession={handleSelectSession}
         onNewSession={handleNewSession}
         initialSessionId={initialSessionId}
         onInitialRestoreDone={handleInitialRestoreDone}
         refreshKey={refreshKey}
         onSessionDeleted={handleSessionDeleted}
-        selectedCwd={selectedSession?.cwd ?? newSessionCwd ?? null}
+        selectedCwd={showAutomationSkill ? automationSkillCwd : selectedSession?.cwd ?? newSessionCwd ?? null}
         onCwdChange={handleCwdChange}
         onOpenFile={handleOpenFile}
         explorerRefreshKey={explorerRefreshKey}
         onAtMention={handleAtMention}
         automationMode={showAutomationSkill ? {
-          cwdLabel: AUTOMATION_SKILL_CWD,
-          conversations: AUTOMATION_SKILL_CONVERSATIONS,
+          cwd: automationSkillCwd,
+          cwdLabel: automationSkillCwdLabel,
         } : undefined}
         topActions={[
           {
@@ -316,8 +413,8 @@ export function AppShell() {
           {
             label: "Skills",
             onClick: () => setSkillsConfigOpen(true),
-            disabled: !activeCwd && !selectedSession?.cwd && !newSessionCwd,
-            title: (!activeCwd && !selectedSession?.cwd && !newSessionCwd) ? "Select a project first" : "Skills",
+            disabled: !activeCwd && !selectedSession?.cwd && !newSessionCwd && !automationSkillCwd,
+            title: (!activeCwd && !selectedSession?.cwd && !newSessionCwd && !automationSkillCwd) ? "Select a project first" : "Skills",
             icon: (
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 3v3" />
@@ -441,12 +538,12 @@ export function AppShell() {
               </svg>
             )}
           </button>
-          {showChat && (
+          {(showChat || showAutomationSkill) && (
             <div style={{ display: "flex", alignItems: "stretch", height: "100%" }}>
               <button
                 onClick={handleExportSession}
-                disabled={!selectedSession}
-                title={selectedSession ? "Export HTML" : "Export is available after the session is saved"}
+                disabled={!activeTopSession}
+                title={activeTopSession ? "Export HTML" : "Export is available after the session is saved"}
                 aria-label="Export HTML"
                 style={{
                   display: "flex",
@@ -458,21 +555,21 @@ export function AppShell() {
                   border: "none",
                   borderTop: "2px solid transparent",
                   borderRight: "1px solid var(--border)",
-                  color: selectedSession ? "var(--text-muted)" : "var(--text-dim)",
-                  cursor: selectedSession ? "pointer" : "not-allowed",
-                  opacity: selectedSession ? 1 : 0.45,
+                  color: activeTopSession ? "var(--text-muted)" : "var(--text-dim)",
+                  cursor: activeTopSession ? "pointer" : "not-allowed",
+                  opacity: activeTopSession ? 1 : 0.45,
                   flexShrink: 0,
                   fontSize: 11,
                   whiteSpace: "nowrap",
                   transition: "color 0.1s, background 0.1s, opacity 0.1s",
                 }}
                 onMouseEnter={(e) => {
-                  if (!selectedSession) return;
+                  if (!activeTopSession) return;
                   e.currentTarget.style.color = "var(--text)";
                   e.currentTarget.style.background = "var(--bg-hover)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = selectedSession ? "var(--text-muted)" : "var(--text-dim)";
+                  e.currentTarget.style.color = activeTopSession ? "var(--text-muted)" : "var(--text-dim)";
                   e.currentTarget.style.background = "none";
                 }}
               >
@@ -484,7 +581,7 @@ export function AppShell() {
                   height: 18,
                   borderRadius: 5,
                   background: "transparent",
-                  color: selectedSession ? "var(--text-muted)" : "var(--text-dim)",
+                  color: activeTopSession ? "var(--text-muted)" : "var(--text-dim)",
                   flexShrink: 0,
                 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -532,50 +629,8 @@ export function AppShell() {
               </button>
             </div>
           )}
-          {showAutomationSkill && (
-            <div style={{ display: "flex", alignItems: "stretch", height: "100%" }}>
-              <button
-                title="Export is not connected in this automation preview yet"
-                style={{ display: "flex", alignItems: "center", gap: 6, height: "100%", padding: "0 12px", background: "none", border: "none", borderTop: "2px solid transparent", borderRight: "1px solid var(--border)", color: "var(--text-muted)", cursor: "default", flexShrink: 0, fontSize: 11, whiteSpace: "nowrap" }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                <span>Export</span>
-              </button>
-              <button
-                title="Branches is not connected in this automation preview yet"
-                style={{ display: "flex", alignItems: "center", gap: 6, height: "100%", padding: "0 12px", background: "none", border: "none", borderTop: "2px solid transparent", borderRight: "1px solid var(--border)", color: "var(--text-muted)", cursor: "default", flexShrink: 0, fontSize: 11, whiteSpace: "nowrap" }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="6" y1="3" x2="6" y2="15" />
-                  <circle cx="18" cy="6" r="3" />
-                  <circle cx="6" cy="18" r="3" />
-                  <path d="M18 9a9 9 0 0 1-9 9" />
-                </svg>
-                <span>Branches</span>
-              </button>
-              <button
-                title="System is not connected in this automation preview yet"
-                style={{ display: "flex", alignItems: "center", gap: 6, height: "100%", padding: "0 12px", background: "none", border: "none", borderTop: "2px solid transparent", borderRight: "1px solid var(--border)", color: "var(--text-muted)", cursor: "default", flexShrink: 0, fontSize: 11, whiteSpace: "nowrap" }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-                <span>System</span>
-              </button>
-              <div style={{ display: "flex", alignItems: "center", padding: "0 12px", borderRight: "1px solid var(--border)", flexShrink: 0 }}>
-                <span style={{ height: 24, display: "inline-flex", alignItems: "center", padding: "0 10px", borderRadius: 12, background: "var(--bg-hover)", color: "var(--text)", fontSize: 11, fontWeight: 600 }}>
-                  Automation
-                </span>
-              </div>
-            </div>
-          )}
           {/* Session stats — right-aligned in top bar */}
-          {showChat && (sessionStats || contextUsage) && (() => {
+          {(showChat || showAutomationSkill) && (sessionStats || contextUsage) && (() => {
             const t = sessionStats?.tokens;
             const c = sessionStats?.cost ?? 0;
             const fmt = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(n);
@@ -706,7 +761,30 @@ export function AppShell() {
           {showAutomation ? (
             <AutomationView onOpenSkill={handleOpenAutomationSkill} />
           ) : showAutomationSkill ? (
-            <AutomationSkillMode />
+            automationWorkspaceLoading ? (
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 13 }}>
+                Preparing automation workspace...
+              </div>
+            ) : automationWorkspaceError ? (
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ef4444", fontSize: 13 }}>
+                {automationWorkspaceError}
+              </div>
+            ) : automationSkillCwd ? (
+              <ChatWindow
+                key={`automation:${automationSessionKey}:${automationSkillSession?.id ?? "new"}:${automationSkillCwd}`}
+                session={automationSkillSession}
+                newSessionCwd={automationSkillSession ? null : automationSkillCwd}
+                onAgentEnd={handleAgentEnd}
+                onSessionCreated={handleSessionCreated}
+                onSessionForked={handleSessionForked}
+                modelsRefreshKey={modelsRefreshKey}
+                chatInputRef={chatInputRef}
+                onBranchDataChange={handleBranchDataChange}
+                onSystemPromptChange={handleSystemPromptChange}
+                onSessionStatsChange={handleSessionStatsChange}
+                onContextUsageChange={handleContextUsageChange}
+              />
+            ) : null
           ) : showChat ? (
             <ChatWindow
               key={sessionKey}
@@ -771,7 +849,7 @@ export function AppShell() {
         {/* File content */}
         <div style={{ flex: 1, overflow: "hidden" }}>
           {activeFileTab?.filePath ? (
-            <FileViewer filePath={activeFileTab.filePath} cwd={activeCwd ?? undefined} />
+            <FileViewer filePath={activeFileTab.filePath} cwd={(showAutomationSkill ? automationSkillCwd : activeCwd) ?? undefined} />
           ) : (
             <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
               No file open
@@ -800,8 +878,8 @@ export function AppShell() {
       </svg>
     </button>
     {modelsConfigOpen && <ModelsConfig onClose={() => { setModelsConfigOpen(false); setModelsRefreshKey((k) => k + 1); }} />}
-    {skillsConfigOpen && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
-      <SkillsConfig cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} />
+    {skillsConfigOpen && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd ?? automationSkillCwd) && (
+      <SkillsConfig cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd ?? automationSkillCwd)!} onClose={() => setSkillsConfigOpen(false)} />
     )}
     </>
   );

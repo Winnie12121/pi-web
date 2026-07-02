@@ -46,7 +46,7 @@ export function AutomationSkillMode() {
         <div style={{ maxWidth: 820, margin: "0 auto", padding: "0 16px 24px" }}>
           <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 0 22px" }}>
             <div style={{ maxWidth: 560, padding: "9px 12px", borderRadius: 10, background: "var(--user-bg)", color: "var(--text)", fontSize: 13, lineHeight: 1.5 }}>
-              Please refine this skill to add offer amount validation.
+              Please refine this skill with the next workflow step.
             </div>
           </div>
 
@@ -61,8 +61,8 @@ export function AutomationSkillMode() {
             </div>
             <div style={{ marginBottom: 8, fontWeight: 650 }}>Summary:</div>
             <div style={{ color: "var(--text-muted)", marginBottom: 14 }}>
-              <div>- Added offer amount validation step</div>
-              <div>- Added recovery note for failed validation</div>
+              <div>- Added a new workflow step</div>
+              <div>- Added recovery notes for failed actions</div>
               <div>- Updated run output description</div>
             </div>
             <ExecuteButton />
