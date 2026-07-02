@@ -1,0 +1,45 @@
+export const ui = {
+  font: {
+    meta: 11,
+    label: 12,
+    body: 13,
+    title: 15,
+    dialogTitle: 17,
+    pageTitle: 20,
+  },
+  weight: {
+    medium: 500,
+    semibold: 600,
+    strong: 650,
+    bold: 700,
+    heavy: 750,
+  },
+  radius: {
+    code: 4,
+    control: 6,
+    button: 7,
+    icon: 8,
+    panel: 10,
+  },
+  control: {
+    height: 34,
+    inputHeight: 36,
+    iconButton: 28,
+    dialogButtonHeight: 32,
+  },
+  modal: {
+    overlayPadding: 20,
+    width: "min(620px, calc(100vw - 40px))",
+    confirmWidth: "min(400px, calc(100vw - 40px))",
+    maxHeight: "calc(100vh - 40px)",
+    headerPadding: "16px 20px 14px",
+    bodyPadding: "18px 20px",
+    footerPadding: "12px 20px",
+    shadow: "0 16px 48px rgba(0,0,0,0.24)",
+  },
+  automation: {
+    pageMaxWidth: 900,
+    pagePadding: "34px 24px 32px",
+    tableColumns: "minmax(220px, 1.4fr) minmax(128px, 0.75fr) minmax(105px, 0.65fr) minmax(92px, 0.5fr) 74px",
+  },
+} as const;

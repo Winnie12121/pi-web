@@ -1,5 +1,7 @@
 "use client";
 
+import { ui } from "./uiStyles";
+
 interface Props {
   open: boolean;
   title: string;
@@ -35,7 +37,7 @@ export function ConfirmDialog({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 24,
+        padding: ui.modal.overlayPadding,
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !loading) onCancel();
@@ -46,21 +48,21 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         style={{
-          width: "min(440px, calc(100vw - 48px))",
+          width: ui.modal.confirmWidth,
           background: "var(--bg)",
           border: "1px solid var(--border)",
-          borderRadius: 12,
-          boxShadow: "0 18px 60px rgba(0,0,0,0.28)",
+          borderRadius: ui.radius.panel,
+          boxShadow: ui.modal.shadow,
           overflow: "hidden",
         }}
       >
-        <div style={{ padding: "22px 24px 18px" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+        <div style={{ padding: "18px 20px 15px" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
             <div
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
+                width: 30,
+                height: 30,
+                borderRadius: ui.radius.icon,
                 background: destructive ? "rgba(239,68,68,0.10)" : "var(--bg-hover)",
                 color: destructive ? "#ef4444" : "var(--text)",
                 display: "flex",
@@ -69,17 +71,17 @@ export function ConfirmDialog({
                 flexShrink: 0,
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 9v4" />
                 <path d="M12 17h.01" />
                 <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
               </svg>
             </div>
             <div style={{ minWidth: 0 }}>
-              <div id="confirm-dialog-title" style={{ fontSize: 17, fontWeight: 750, color: "var(--text)", lineHeight: 1.3 }}>
+              <div id="confirm-dialog-title" style={{ fontSize: ui.font.title, fontWeight: ui.weight.bold, color: "var(--text)", lineHeight: 1.3 }}>
                 {title}
               </div>
-              <div style={{ marginTop: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55 }}>
+              <div style={{ marginTop: 6, fontSize: ui.font.label, color: "var(--text-muted)", lineHeight: 1.5 }}>
                 {description}
               </div>
             </div>
@@ -90,8 +92,8 @@ export function ConfirmDialog({
           style={{
             display: "flex",
             justifyContent: "flex-end",
-            gap: 10,
-            padding: "14px 24px",
+            gap: 8,
+            padding: "12px 20px",
             borderTop: "1px solid var(--border)",
             background: "var(--bg)",
           }}
@@ -100,14 +102,14 @@ export function ConfirmDialog({
             onClick={onCancel}
             disabled={loading}
             style={{
-              height: 38,
-              padding: "0 16px",
+              height: ui.control.dialogButtonHeight,
+              padding: "0 13px",
               border: "1px solid var(--border)",
-              borderRadius: 8,
+              borderRadius: ui.radius.control,
               background: "var(--bg)",
-              color: "var(--text)",
-              fontSize: 13,
-              fontWeight: 600,
+              color: "var(--text-muted)",
+              fontSize: ui.font.body,
+              fontWeight: ui.weight.medium,
               cursor: loading ? "not-allowed" : "pointer",
               opacity: loading ? 0.6 : 1,
             }}
@@ -118,14 +120,14 @@ export function ConfirmDialog({
             onClick={onConfirm}
             disabled={loading}
             style={{
-              height: 38,
-              padding: "0 16px",
+              height: ui.control.dialogButtonHeight,
+              padding: "0 14px",
               border: "none",
-              borderRadius: 8,
+              borderRadius: ui.radius.control,
               background: destructive ? "#ef4444" : "var(--text)",
               color: "#fff",
-              fontSize: 13,
-              fontWeight: 700,
+              fontSize: ui.font.body,
+              fontWeight: ui.weight.strong,
               cursor: loading ? "wait" : "pointer",
               opacity: loading ? 0.7 : 1,
             }}

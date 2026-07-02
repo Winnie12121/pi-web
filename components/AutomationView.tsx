@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { CreateAutomationModal, type AutomationSkill } from "./CreateAutomationModal";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { ui } from "./uiStyles";
 
-function AutomationIcon({ size = 22 }: { size?: number }) {
+function AutomationIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="4" y="4" width="7" height="7" rx="2" />
@@ -17,7 +18,7 @@ function AutomationIcon({ size = 22 }: { size?: number }) {
 
 function SourceIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 3v3" />
       <path d="M19.5 4.5 17 7" />
       <path d="M21 12h-3" />
@@ -28,8 +29,8 @@ function SourceIcon() {
 
 function StatusPill({ status }: { status: AutomationSkill["status"] }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 26, padding: "0 12px", borderRadius: 13, border: "1px solid var(--border)", background: "var(--bg-hover)", color: "var(--text)", fontSize: 13, fontWeight: 700 }}>
-      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--text)", flexShrink: 0 }} />
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 22, padding: "0 9px", borderRadius: 11, border: "1px solid var(--border)", background: "var(--bg-hover)", color: "var(--text)", fontSize: ui.font.meta, fontWeight: ui.weight.strong }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--text)", flexShrink: 0 }} />
       {status === "ready" ? "Ready" : status}
     </span>
   );
@@ -97,27 +98,27 @@ export function AutomationView() {
 
   return (
     <div style={{ height: "100%", overflowY: "auto", background: "var(--bg)" }}>
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "54px 32px 40px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--bg-hover)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <AutomationIcon size={22} />
+      <div style={{ maxWidth: ui.automation.pageMaxWidth, margin: "0 auto", padding: ui.automation.pagePadding }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
+          <div style={{ width: 34, height: 34, borderRadius: ui.radius.icon, background: "var(--bg-hover)", color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AutomationIcon size={18} />
           </div>
           <div style={{ minWidth: 0 }}>
-            <h1 style={{ margin: 0, fontSize: 26, lineHeight: 1.2, color: "var(--text)", fontWeight: 800, letterSpacing: 0 }}>Automation</h1>
-            <p style={{ margin: "12px 0 0", color: "var(--text-muted)", fontSize: 16, lineHeight: 1.45, maxWidth: 820 }}>
+            <h1 style={{ margin: 0, fontSize: ui.font.pageTitle, lineHeight: 1.25, color: "var(--text)", fontWeight: ui.weight.heavy, letterSpacing: 0 }}>Automation</h1>
+            <p style={{ margin: "7px 0 0", color: "var(--text-muted)", fontSize: ui.font.body, lineHeight: 1.5, maxWidth: 760 }}>
               Reusable automation skills generated from browser workflows. Stored under{" "}
-              <code style={{ fontFamily: "var(--font-mono)", fontSize: 15, padding: "2px 5px", borderRadius: 5, background: "var(--bg-hover)", color: "var(--text-muted)" }}>{skillsRoot}</code>.
+              <code style={{ fontFamily: "var(--font-mono)", fontSize: ui.font.label, padding: "1px 5px", borderRadius: ui.radius.code, background: "var(--bg-hover)", color: "var(--text-muted)" }}>{skillsRoot}</code>.
             </p>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 28, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 22, flexWrap: "wrap" }}>
           <button
             disabled
             title="Import from Recorder coming soon"
-            style={{ height: 46, display: "inline-flex", alignItems: "center", gap: 9, padding: "0 18px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text-dim)", fontSize: 15, fontWeight: 650, cursor: "not-allowed", opacity: 0.55 }}
+            style={{ height: ui.control.inputHeight, display: "inline-flex", alignItems: "center", gap: 7, padding: "0 13px", borderRadius: ui.radius.button, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text-dim)", fontSize: ui.font.body, fontWeight: ui.weight.semibold, cursor: "not-allowed", opacity: 0.55 }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 3v12" />
               <path d="m8 11 4 4 4-4" />
               <path d="M20 17.5A4.5 4.5 0 0 0 15.5 13H15" />
@@ -127,9 +128,9 @@ export function AutomationView() {
           </button>
           <button
             onClick={() => setModalOpen(true)}
-            style={{ height: 46, display: "inline-flex", alignItems: "center", gap: 10, padding: "0 20px", borderRadius: 10, border: "none", background: "var(--text)", color: "var(--bg)", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 3px 10px rgba(0,0,0,0.16)" }}
+            style={{ height: ui.control.inputHeight, display: "inline-flex", alignItems: "center", gap: 8, padding: "0 15px", borderRadius: ui.radius.button, border: "none", background: "var(--text)", color: "var(--bg)", fontSize: ui.font.body, fontWeight: ui.weight.strong, cursor: "pointer", boxShadow: "0 2px 7px rgba(0,0,0,0.14)" }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
@@ -137,8 +138,8 @@ export function AutomationView() {
           </button>
         </div>
 
-        <div style={{ marginTop: 34, border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden", background: "var(--bg)" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(240px, 1.4fr) minmax(150px, 0.75fr) minmax(130px, 0.65fr) minmax(110px, 0.5fr) 86px", gap: 16, padding: "14px 22px", borderBottom: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 12, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+        <div style={{ marginTop: 26, border: "1px solid var(--border)", borderRadius: ui.radius.panel, overflow: "hidden", background: "var(--bg)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: ui.automation.tableColumns, gap: 12, padding: "11px 16px", borderBottom: "1px solid var(--border)", color: "var(--text-muted)", fontSize: ui.font.meta, fontWeight: ui.weight.heavy, letterSpacing: "0.05em", textTransform: "uppercase" }}>
             <div>Skill</div>
             <div>Source</div>
             <div>Last Run</div>
@@ -147,36 +148,36 @@ export function AutomationView() {
           </div>
 
           {loading ? (
-            <div style={{ padding: 28, color: "var(--text-muted)", fontSize: 14 }}>Loading...</div>
+            <div style={{ padding: 22, color: "var(--text-muted)", fontSize: ui.font.body }}>Loading...</div>
           ) : error ? (
-            <div style={{ padding: 28, color: "#ef4444", fontSize: 14 }}>{error}</div>
+            <div style={{ padding: 22, color: "#ef4444", fontSize: ui.font.body }}>{error}</div>
           ) : skills.length === 0 ? (
-            <div style={{ padding: "42px 28px", color: "var(--text-muted)", fontSize: 14, lineHeight: 1.6 }}>
+            <div style={{ padding: "32px 22px", color: "var(--text-muted)", fontSize: ui.font.body, lineHeight: 1.55 }}>
               No automation skills yet. Create a blank workspace to get started.
             </div>
           ) : (
             skills.map((skill) => (
               <div
                 key={skill.filePath}
-                style={{ display: "grid", gridTemplateColumns: "minmax(240px, 1.4fr) minmax(150px, 0.75fr) minmax(130px, 0.65fr) minmax(110px, 0.5fr) 86px", gap: 16, alignItems: "center", padding: "20px 22px", borderBottom: "1px solid var(--border)" }}
+                style={{ display: "grid", gridTemplateColumns: ui.automation.tableColumns, gap: 12, alignItems: "center", padding: "14px 16px", borderBottom: "1px solid var(--border)" }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{skill.name}</div>
-                  <div style={{ marginTop: 5, fontSize: 13, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{skill.description}</div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: ui.font.body, fontWeight: ui.weight.bold, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{skill.name}</div>
+                  <div style={{ marginTop: 4, fontSize: ui.font.label, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{skill.description}</div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)", fontSize: ui.font.label }}>
                   <SourceIcon />
                   {skill.source === "manual" ? "Manual" : "Unknown"}
                 </div>
-                <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{skill.lastRun}</div>
+                <div style={{ color: "var(--text-muted)", fontSize: ui.font.label }}>{skill.lastRun}</div>
                 <div><StatusPill status={skill.status} /></div>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 5 }}>
                   <button
                     onClick={() => setEditingSkill(skill)}
                     title="Edit automation"
-                    style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", color: "var(--text-muted)", cursor: "pointer", padding: 0 }}
+                    style={{ width: ui.control.iconButton, height: ui.control.iconButton, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", borderRadius: ui.radius.control, background: "var(--bg)", color: "var(--text-muted)", cursor: "pointer", padding: 0 }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 20h9" />
                       <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                     </svg>
@@ -185,9 +186,9 @@ export function AutomationView() {
                     onClick={() => setDeleteTarget(skill)}
                     disabled={deletingPath === skill.filePath}
                     title="Delete automation"
-                    style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)", color: deletingPath === skill.filePath ? "var(--text-dim)" : "#ef4444", cursor: deletingPath === skill.filePath ? "wait" : "pointer", padding: 0, opacity: deletingPath === skill.filePath ? 0.55 : 1 }}
+                    style={{ width: ui.control.iconButton, height: ui.control.iconButton, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", borderRadius: ui.radius.control, background: "var(--bg)", color: deletingPath === skill.filePath ? "var(--text-dim)" : "#ef4444", cursor: deletingPath === skill.filePath ? "wait" : "pointer", padding: 0, opacity: deletingPath === skill.filePath ? 0.55 : 1 }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 6h18" />
                       <path d="M8 6V4h8v2" />
                       <path d="m19 6-1 14H6L5 6" />
